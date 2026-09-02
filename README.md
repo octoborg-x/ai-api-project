@@ -44,3 +44,8 @@ python main.py
 - **Day 3**: Wrapped LLM client in FastAPI. Added `/health` and `/chat`
   endpoints with Pydantic request/response validation. Swagger docs
   auto-generated at `/docs`.
+
+- **Day 4**: Added streaming endpoint `/chat/stream` using FastAPI's
+  StreamingResponse + an async generator (`ask_stream`). Tested with
+  `curl -N`. Introduced to SSE (`text/event-stream`) concept.
+  
