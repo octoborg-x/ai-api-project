@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from models import ChatRequest, ChatResponse
 from llm_client import ask
+from fastapi.responses import StreamingResponse
+from llm_client import ask_stream
 
 app = FastAPI(title="AI API Project")
 
@@ -15,3 +17,10 @@ async def chat(req: ChatRequest):
         return ChatResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat/stream")
+async def chat_stream(req: ChatRequest):
+    return StreamingResponse(
+        ask_stream(req.prompt),
+        media_type="text/event-stream",
+    )
