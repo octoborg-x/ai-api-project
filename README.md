@@ -37,7 +37,10 @@ python main.py
   to `.env` (no hardcoded values, fail-fast if missing). Inspected raw
   response object and token usage fields.
 
-## Day 2: async + streaming responses
 - **Day 2**: Sync streaming implemented (`stream=True`, iterate chunks).
   Converted to async using `AsyncOpenAI` + `async for` — needed for
   handling concurrent users in FastAPI (Day 3+).
+
+- **Day 3**: Wrapped LLM client in FastAPI. Added `/health` and `/chat`
+  endpoints with Pydantic request/response validation. Swagger docs
+  auto-generated at `/docs`.
