@@ -13,13 +13,14 @@ and structured JSON extraction with schema validation.
 - Python 3.12
 - OpenRouter (OpenAI SDK, compatible endpoint)
 - python-dotenv
+- Pylint (static analysis)
 
 ## Setup
 
 \`\`\`bash
 python3 -m venv venv
 source venv/bin/activate
-pip install openai python-dotenv
+pip install -r requirements.txt
 \`\`\`
 
 Create a `.env` file:
@@ -54,4 +55,3 @@ See [commands reference](cmd_reference.md#L21)
   modes: malformed JSON from the model (markdown code fences, extra
   text) and schema violations (Pydantic validation). New endpoint:
   `POST /extract-ticket`.
-

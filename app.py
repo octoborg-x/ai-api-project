@@ -6,9 +6,11 @@ from llm_client import ask_stream
 
 app = FastAPI(title="AI API Project")
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
@@ -18,6 +20,7 @@ async def chat(req: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/chat/stream")
 async def chat_stream(req: ChatRequest):
     return StreamingResponse(
@@ -25,8 +28,10 @@ async def chat_stream(req: ChatRequest):
         media_type="text/event-stream",
     )
 
+
 class TicketRequest(BaseModel):
     message: str
+
 
 @app.post("/extract-ticket", response_model=TicketExtraction)
 async def extract_ticket(req: TicketRequest):

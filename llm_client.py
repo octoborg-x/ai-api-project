@@ -1,7 +1,11 @@
 import os
+import json
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app import TicketExtraction
 
 load_dotenv()
 
@@ -11,6 +15,7 @@ client = AsyncOpenAI(
 )
 
 MODEL = os.environ["MODEL_NAME"]
+
 
 async def ask(prompt: str) -> dict:
     response = await client.chat.completions.create(
@@ -23,6 +28,7 @@ async def ask(prompt: str) -> dict:
         "completion_tokens": response.usage.completion_tokens,
     }
 
+
 async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
     stream = await client.chat.completions.create(
         model=MODEL,
@@ -33,6 +39,7 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
+
 
 async def extract_ticket_info(message: str) -> TicketExtraction:
     prompt = f"""Extract structured information from this customer support message.

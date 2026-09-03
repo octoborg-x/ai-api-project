@@ -26,12 +26,6 @@ uvicorn app:app --reload
 Server runs at http://localhost:8000
 Interactive docs: http://localhost:8000/docs
 
-### Run the CLI test script
-\`\`\`bash
-source venv/bin/activate
-python main.py
-\`\`\`
-
 ### Test endpoints
 \`\`\`bash
 curl http://localhost:8000/health
@@ -40,4 +34,3 @@ curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"prompt": "hi"}'
 \`\`\`
-

@@ -1,0 +1,19 @@
+[MASTER]
+ignore=venv
+
+[MESSAGES CONTROL]
+# C0114: Missing module docstring
+# C0115: Missing class docstring
+# C0116: Missing function docstring
+# R0903: Too few public methods (common with Pydantic models)
+disable=C0114,C0115,C0116,R0903
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+# Allow shorter variable names common in loops or math
+good-names=i,j,k,ex,Run,_
+
+[DESIGN]
+max-args=5
