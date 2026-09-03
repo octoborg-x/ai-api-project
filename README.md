@@ -2,12 +2,14 @@
 
 Part of an 8-week AI Engineer upskilling plan. Week 1: Python + LLM APIs.
 
-## What this is (Day 1)
+## What this is
 
-A minimal Python client that connects to an LLM via the OpenRouter API
-(OpenAI-compatible), with environment-based configuration.
+A Python backend that connects to an LLM via OpenRouter (OpenAI-compatible
+API), exposed through FastAPI. Supports plain chat, streaming responses,
+and structured JSON extraction with schema validation.
 
 ## Stack
+
 - Python 3.12
 - OpenRouter (OpenAI SDK, compatible endpoint)
 - python-dotenv
@@ -27,10 +29,7 @@ MODEL_NAME=cohere/north-mini-code:free
 \`\`\`
 
 ## Run
-
-\`\`\`bash
-python main.py
-\`\`\`
+See [commands reference](cmd_reference.md#L21)
 
 ## Progress log
 - **Day 1**: Basic API client working. Model and API key externalized
@@ -48,4 +47,11 @@ python main.py
 - **Day 4**: Added streaming endpoint `/chat/stream` using FastAPI's
   StreamingResponse + an async generator (`ask_stream`). Tested with
   `curl -N`. Introduced to SSE (`text/event-stream`) concept.
-  
+
+- **Day 5**: Added structured JSON output extraction. `TicketExtraction`
+  Pydantic model with `Literal`-constrained fields (category, urgency,
+  sentiment) to force the LLM into a fixed schema. Handled two failure
+  modes: malformed JSON from the model (markdown code fences, extra
+  text) and schema violations (Pydantic validation). New endpoint:
+  `POST /extract-ticket`.
+

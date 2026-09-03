@@ -4,6 +4,13 @@
 - Always activate venv (`source venv/bin/activate`) before running
   `uvicorn` — forgetting this causes `ModuleNotFoundError`.
 
+## Endpoints
+- `GET /health` — health check
+- `POST /chat` — single-turn chat, returns full response + token usage
+- `POST /chat/stream` — streaming chat response (SSE-style)
+- `POST /extract-ticket` — extracts structured data (category, urgency,
+  sentiment) from a support message, validated against a fixed schema
+
 ### Setup
 \`\`\`bash
 python3 -m venv venv
