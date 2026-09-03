@@ -24,3 +24,13 @@ async def chat_stream(req: ChatRequest):
         ask_stream(req.prompt),
         media_type="text/event-stream",
     )
+
+class TicketRequest(BaseModel):
+    message: str
+
+@app.post("/extract-ticket", response_model=TicketExtraction)
+async def extract_ticket(req: TicketRequest):
+    try:
+        return await extract_ticket_info(req.message)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
