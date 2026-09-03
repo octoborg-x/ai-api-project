@@ -1,11 +1,14 @@
+# standard library
 import os
 import json
+from typing import AsyncGenerator
+
+# third-party
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from typing import AsyncGenerator, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from app import TicketExtraction
+# local
+from models import TicketExtraction
 
 load_dotenv()
 

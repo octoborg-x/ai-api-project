@@ -1,8 +1,11 @@
+# third-party
 from fastapi import FastAPI, HTTPException
-from models import ChatRequest, ChatResponse
-from llm_client import ask
 from fastapi.responses import StreamingResponse
-from llm_client import ask_stream
+from pydantic import BaseModel
+
+# local
+from models import ChatRequest, ChatResponse, TicketExtraction
+from llm_client import ask, ask_stream, extract_ticket_info
 
 app = FastAPI(title="AI API Project")
 
@@ -18,7 +21,7 @@ async def chat(req: ChatRequest):
         result = await ask(req.prompt)
         return ChatResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/chat/stream")
@@ -38,4 +41,4 @@ async def extract_ticket(req: TicketRequest):
     try:
         return await extract_ticket_info(req.message)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
