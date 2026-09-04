@@ -5,7 +5,8 @@ from typing import AsyncGenerator
 
 # third-party
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 # local
 from models import TicketExtraction
@@ -15,11 +16,17 @@ load_dotenv()
 client = AsyncOpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1",
+    timeout=30.0,  # seconds
 )
 
 MODEL = os.environ["MODEL_NAME"]
 
-
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((APITimeoutError, RateLimitError, APIError)),
+    reraise=True,
+)
 async def ask(prompt: str) -> dict:
     response = await client.chat.completions.create(
         model=MODEL,
@@ -30,7 +37,6 @@ async def ask(prompt: str) -> dict:
         "prompt_tokens": response.usage.prompt_tokens,
         "completion_tokens": response.usage.completion_tokens,
     }
-
 
 async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
     stream = await client.chat.completions.create(
@@ -43,7 +49,12 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
         if delta:
             yield delta
 
-
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((APITimeoutError, RateLimitError, APIError)),
+    reraise=True,
+)
 async def extract_ticket_info(message: str) -> TicketExtraction:
     prompt = f"""Extract structured information from this customer support message.
 
