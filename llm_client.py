@@ -4,8 +4,10 @@ import json
 from typing import AsyncGenerator
 
 # third-party
+import logging
 from dotenv import load_dotenv
 from tenacity import (
+    before_sleep_log,
     retry,
     stop_after_attempt,
     wait_exponential,
@@ -27,13 +29,18 @@ client = AsyncOpenAI(
 
 MODEL = os.environ["MODEL_NAME"]
 
+logger = logging.getLogger(__name__)
 
-@retry(
+llm_retry = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception_type((APITimeoutError, RateLimitError, APIError)),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
+
+
+@llm_retry
 async def ask(prompt: str) -> dict:
     response = await client.chat.completions.create(
         model=MODEL,
@@ -62,12 +69,7 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
             yield delta
 
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((APITimeoutError, RateLimitError, APIError)),
-    reraise=True,
-)
+@llm_retry
 async def extract_ticket_info(message: str) -> TicketExtraction:
     prompt = f"""Extract structured information from this customer support message.
 
