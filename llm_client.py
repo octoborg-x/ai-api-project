@@ -5,11 +5,17 @@ from typing import AsyncGenerator
 
 # third-party
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 # local
 from models import TicketExtraction
+from pricing import calculate_cost
 
 load_dotenv()
 
@@ -20,6 +26,7 @@ client = AsyncOpenAI(
 )
 
 MODEL = os.environ["MODEL_NAME"]
+
 
 @retry(
     stop=stop_after_attempt(3),
@@ -32,11 +39,16 @@ async def ask(prompt: str) -> dict:
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
+    usage = response.usage
     return {
         "response": response.choices[0].message.content,
         "prompt_tokens": response.usage.prompt_tokens,
         "completion_tokens": response.usage.completion_tokens,
+        "estimated_cost_usd": calculate_cost(
+            MODEL, usage.prompt_tokens, usage.completion_tokens
+        ),
     }
+
 
 async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
     stream = await client.chat.completions.create(
@@ -48,6 +60,7 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
+
 
 @retry(
     stop=stop_after_attempt(3),

@@ -10,6 +10,7 @@ class ChatResponse(BaseModel):
     response: str
     prompt_tokens: int
     completion_tokens: int
+    estimated_cost_usd: float
 
 
 class TicketExtraction(BaseModel):
