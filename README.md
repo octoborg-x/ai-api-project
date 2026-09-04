@@ -55,3 +55,8 @@ See [commands reference](cmd_reference.md#L21)
   modes: malformed JSON from the model (markdown code fences, extra
   text) and schema violations (Pydantic validation). New endpoint:
   `POST /extract-ticket`.
+
+- **Day 6**: Added retry logic (tenacity, exponential backoff, transient
+  errors only), client timeout, and cost tracking based on token usage.
+  API now returns differentiated HTTP status codes (429/504/502/500)
+  depending on failure type instead of a generic 500.
