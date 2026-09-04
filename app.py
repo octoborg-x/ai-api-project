@@ -2,6 +2,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from openai import APITimeoutError, RateLimitError, APIError
 
 # local
 from models import ChatRequest, ChatResponse, TicketExtraction
@@ -20,8 +21,20 @@ async def chat(req: ChatRequest):
     try:
         result = await ask(req.prompt)
         return ChatResponse(**result)
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429, detail="Rate limited by provider, try again shortly"
+        ) from e
+    except APITimeoutError as e:
+        raise HTTPException(status_code=504, detail="LLM provider timed out") from e
+    except APIError as e:
+        raise HTTPException(
+            status_code=502, detail=f"LLM provider error: {str(e)}"
+        ) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected error: {str(e)}"
+        ) from e
 
 
 @app.post("/chat/stream")
