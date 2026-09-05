@@ -1,0 +1,117 @@
+import os
+
+os.environ.setdefault("OPENROUTER_API_KEY", "test-key")
+os.environ.setdefault("MODEL_NAME", "cohere/north-mini-code:free")
+
+import pytest
+
+import app as api
+from models import TicketExtraction
+
+
+class FakeRateLimitError(Exception):
+    pass
+
+
+class FakeTimeoutError(Exception):
+    pass
+
+
+class FakeAPIError(Exception):
+    pass
+
+
+@pytest.mark.asyncio
+async def test_health_returns_ok():
+    assert api.health() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_chat_returns_validated_response(monkeypatch):
+    async def fake_ask(prompt):
+        assert prompt == "hello"
+        return {"response": "Hi!", "prompt_tokens": 3, "completion_tokens": 2,
+                "estimated_cost_usd": 0.001}
+
+    monkeypatch.setattr(api, "ask", fake_ask)
+    result = await api.chat(api.ChatRequest(prompt="hello"))
+    assert result.response == "Hi!"
+    assert result.prompt_tokens == 3
+    assert result.completion_tokens == 2
+    assert result.estimated_cost_usd == 0.001
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("exception_type", "expected_status", "expected_detail"),
+    [
+        (FakeRateLimitError, 429, "Rate limited by provider, try again shortly"),
+        (FakeTimeoutError, 504, "LLM provider timed out"),
+        (FakeAPIError, 502, "LLM provider error: upstream failure"),
+        (RuntimeError, 500, "Unexpected error: unexpected failure"),
+    ],
+)
+async def test_chat_maps_provider_failures_to_http_errors(
+    monkeypatch, exception_type, expected_status, expected_detail
+):
+    async def failing_ask(_prompt):
+        message = "upstream failure" if exception_type is FakeAPIError else "unexpected failure"
+        raise exception_type(message)
+
+    monkeypatch.setattr(api, "RateLimitError", FakeRateLimitError)
+    monkeypatch.setattr(api, "APITimeoutError", FakeTimeoutError)
+    monkeypatch.setattr(api, "APIError", FakeAPIError)
+    monkeypatch.setattr(api, "ask", failing_ask)
+
+    with pytest.raises(api.HTTPException) as exc_info:
+        await api.chat(api.ChatRequest(prompt="hello"))
+
+    assert exc_info.value.status_code == expected_status
+    assert exc_info.value.detail == expected_detail
+
+
+@pytest.mark.asyncio
+async def test_stream_endpoint_returns_streaming_response(monkeypatch):
+    async def fake_stream(prompt):
+        assert prompt == "hello"
+        yield "Hel"
+        yield "lo"
+
+    monkeypatch.setattr(api, "ask_stream", fake_stream)
+    response = await api.chat_stream(api.ChatRequest(prompt="hello"))
+    assert isinstance(response, api.StreamingResponse)
+    assert response.media_type == "text/event-stream"
+    assert response.body_iterator is not None
+
+
+@pytest.mark.asyncio
+async def test_extract_ticket_returns_validated_model(monkeypatch):
+    async def fake_extract(message):
+        assert message == "My card was charged twice"
+        return TicketExtraction(
+            summary="Customer was charged twice.",
+            category="billing",
+            urgency="high",
+            customer_sentiment="negative",
+        )
+
+    monkeypatch.setattr(api, "extract_ticket_info", fake_extract)
+    result = await api.extract_ticket(
+        api.TicketRequest(message="My card was charged twice")
+    )
+    assert result.category == "billing"
+    assert result.urgency == "high"
+    assert result.customer_sentiment == "negative"
+
+
+@pytest.mark.asyncio
+async def test_extract_ticket_maps_invalid_output_to_422(monkeypatch):
+    async def fake_extract(_message):
+        raise ValueError("Model returned invalid structured output")
+
+    monkeypatch.setattr(api, "extract_ticket_info", fake_extract)
+    with pytest.raises(api.HTTPException) as exc_info:
+        await api.extract_ticket(api.TicketRequest(message="broken output"))
+
+    assert exc_info.value.status_code == 422
+    assert "invalid structured output" in exc_info.value.detail

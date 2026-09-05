@@ -40,3 +40,6 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 uvicorn==0.52.4
 virtualenv==21.7.8
+
+pytest==8.4.2
+pytest-asyncio==1.2.0
