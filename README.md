@@ -1,62 +1,36 @@
 # AI API Project
 
-Part of an 8-week AI Engineer upskilling plan. Week 1: Python + LLM APIs.
+A production-style FastAPI backend for LLM integration — chat, streaming,
+structured extraction, retry handling, and cost tracking. Built as
+Project 1 of an 8-week AI Engineer upskilling plan.
 
-## What this is
-
-A Python backend that connects to an LLM via OpenRouter (OpenAI-compatible
-API), exposed through FastAPI. Supports plain chat, streaming responses,
-and structured JSON extraction with schema validation.
+## Features
+- Single-turn chat with token/cost tracking
+- Streaming responses (SSE-style, chunked)
+- Structured JSON extraction with schema validation (Pydantic `Literal` fields)
+- Retry logic with exponential backoff on transient failures
+- Differentiated error handling (429/504/502/500)
+- Swappable model config via environment variables
 
 ## Stack
+Python · FastAPI · Pydantic · OpenRouter (OpenAI-compatible SDK) · tenacity
 
-- Python 3.12
-- OpenRouter (OpenAI SDK, compatible endpoint)
-- python-dotenv
-- Pylint (static analysis)
+## Architecture
+Client → FastAPI → LLM Client (retry/timeout wrapper) → OpenRouter → Model
 
 ## Setup
+[keep your existing setup steps]
 
-\`\`\`bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-\`\`\`
+## Endpoints
+- `GET /health`
+- `POST /chat`
+- `POST /chat/stream`
+- `POST /extract-ticket`
 
-Create a `.env` file:
-\`\`\`
-OPENROUTER_API_KEY=your_key_here
-MODEL_NAME=cohere/north-mini-code:free
-\`\`\`
-
-## Run
-See [commands reference](cmd_reference.md#L21)
+## Design decisions
+- Config externalized to `.env`, fails loudly (no silent defaults) if missing
+- Retry only on transient errors (timeout, rate limit) — not on 4xx client errors
+- Dev tools (black, pylint, pre-commit) kept separate from runtime deps
 
 ## Progress log
-- **Day 1**: Basic API client working. Model and API key externalized
-  to `.env` (no hardcoded values, fail-fast if missing). Inspected raw
-  response object and token usage fields.
-
-- **Day 2**: Sync streaming implemented (`stream=True`, iterate chunks).
-  Converted to async using `AsyncOpenAI` + `async for` — needed for
-  handling concurrent users in FastAPI (Day 3+).
-
-- **Day 3**: Wrapped LLM client in FastAPI. Added `/health` and `/chat`
-  endpoints with Pydantic request/response validation. Swagger docs
-  auto-generated at `/docs`.
-
-- **Day 4**: Added streaming endpoint `/chat/stream` using FastAPI's
-  StreamingResponse + an async generator (`ask_stream`). Tested with
-  `curl -N`. Introduced to SSE (`text/event-stream`) concept.
-
-- **Day 5**: Added structured JSON output extraction. `TicketExtraction`
-  Pydantic model with `Literal`-constrained fields (category, urgency,
-  sentiment) to force the LLM into a fixed schema. Handled two failure
-  modes: malformed JSON from the model (markdown code fences, extra
-  text) and schema violations (Pydantic validation). New endpoint:
-  `POST /extract-ticket`.
-
-- **Day 6**: Added retry logic (tenacity, exponential backoff, transient
-  errors only), client timeout, and cost tracking based on token usage.
-  API now returns differentiated HTTP status codes (429/504/502/500)
-  depending on failure type instead of a generic 500.
+[keep your daily log — this is good, don't remove it]
