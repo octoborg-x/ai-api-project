@@ -121,3 +121,42 @@ async def test_extract_ticket_rejects_schema_violation(monkeypatch):
     monkeypatch.setattr(llm_client.client.chat.completions, "create", fake_create)
     with pytest.raises(ValueError, match="invalid structured output"):
         await llm_client.extract_ticket_info("invalid category")
+
+
+
+@pytest.mark.asyncio
+async def test_ask_stops_after_three_transient_failures(monkeypatch):
+    attempts = 0
+
+    async def fake_create(**_kwargs):
+        nonlocal attempts
+        attempts += 1
+        raise RateLimitError.__new__(RateLimitError)
+
+    monkeypatch.setattr(llm_client.client.chat.completions, "create", fake_create)
+
+    with pytest.raises(RateLimitError):
+        await llm_client.ask.retry_with(wait=wait_none())("always fails")
+
+    assert attempts == 3
+
+
+@pytest.mark.asyncio
+async def test_extract_ticket_retries_transient_provider_error(monkeypatch):
+    attempts = 0
+
+    async def fake_create(**_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RateLimitError.__new__(RateLimitError)
+        return completion_response(
+            '{"summary":"Resolved","category":"technical",'
+            '"urgency":"low","customer_sentiment":"neutral"}'
+        )
+
+    monkeypatch.setattr(llm_client.client.chat.completions, "create", fake_create)
+    result = await llm_client.extract_ticket_info.retry_with(wait=wait_none())("retry")
+
+    assert result.category == "technical"
+    assert attempts == 2
