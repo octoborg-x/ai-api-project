@@ -1,19 +1,20 @@
 # standard library
-import os
 import json
-from typing import AsyncGenerator
 
 # third-party
 import logging
+import os
+from collections.abc import AsyncGenerator
+
 from dotenv import load_dotenv
+from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 from tenacity import (
     before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
 )
-from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 # local
 from models import TicketExtraction

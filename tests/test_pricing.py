@@ -6,7 +6,9 @@ def test_free_model_cost_is_zero():
 
 
 def test_known_paid_model_uses_input_and_output_rates(monkeypatch):
-    monkeypatch.setitem(pricing.MODEL_PRICING, "test/model", {"input": 2.0, "output": 4.0})
+    monkeypatch.setitem(
+        pricing.MODEL_PRICING, "test/model", {"input": 2.0, "output": 4.0}
+    )
     assert pricing.calculate_cost("test/model", 1000, 500) == 0.004
 
 
