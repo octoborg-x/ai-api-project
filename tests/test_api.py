@@ -30,8 +30,12 @@ async def test_health_returns_ok():
 async def test_chat_returns_validated_response(monkeypatch):
     async def fake_ask(prompt):
         assert prompt == "hello"
-        return {"response": "Hi!", "prompt_tokens": 3, "completion_tokens": 2,
-                "estimated_cost_usd": 0.001}
+        return {
+            "response": "Hi!",
+            "prompt_tokens": 3,
+            "completion_tokens": 2,
+            "estimated_cost_usd": 0.001,
+        }
 
     monkeypatch.setattr(api, "ask", fake_ask)
     result = await api.chat(api.ChatRequest(prompt="hello"))
@@ -55,7 +59,11 @@ async def test_chat_maps_provider_failures_to_http_errors(
     monkeypatch, exception_type, expected_status, expected_detail
 ):
     async def failing_ask(_prompt):
-        message = "upstream failure" if exception_type is FakeAPIError else "unexpected failure"
+        message = (
+            "upstream failure"
+            if exception_type is FakeAPIError
+            else "unexpected failure"
+        )
         raise exception_type(message)
 
     monkeypatch.setattr(api, "RateLimitError", FakeRateLimitError)
