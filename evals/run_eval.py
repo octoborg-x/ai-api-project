@@ -92,7 +92,10 @@ def print_report(r):
     print("\nLLM EVALUATION\n"+"─"*42)
     print(f"Suite                 {r['suite']}"); print(f"Cases                 {r['total_cases']}")
     print(f"Passed                {r['passed']}"); print(f"Failed                {r['failed']}")
-    print(f"Accuracy              {r['accuracy']:.1%}"); print(f"Technical failure     {r['failure_rate']:.1%}")
+    print(f"Accuracy              {r['accuracy']:.1%}"); print(f"Case failure          {r['failure_rate']:.1%}")
+    print(f"Technical failure     {r['technical_failure_rate']:.1%}")
+    if r["structured_output_validity"] is not None:
+        print(f"Structured validity   {r['structured_output_validity']:.1%}")
     l=r["latency_ms"]; print("\nLatency"); print(f"  Average             {l['average']} ms"); print(f"  P50                 {l['p50']} ms"); print(f"  P95                 {l['p95']} ms"); print(f"  P99                 {l['p99']} ms")
     t=r["tokens"]; print("\nTokens"); print(f"  Input               {t['input']}"); print(f"  Output              {t['output']}"); print(f"  Total               {t['total']}"); print(f"  Average/request     {t['average_total_per_case']}")
     c=r["cost"]; print("\nCost"); print(f"  Total               USD {c['total_usd']:.6f}"); print(f"  Average/request     USD {c['average_per_request_usd']:.6f}")
