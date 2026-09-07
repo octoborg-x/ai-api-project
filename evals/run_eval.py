@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run the Week 1 LLM evaluation suites against the local API."""
+
 from __future__ import annotations
 
 import argparse
@@ -68,9 +69,7 @@ def evaluate_chat(case: dict[str, Any], data: dict[str, Any], status: int | None
     }
 
 
-def evaluate_extraction(
-    case: dict[str, Any], data: dict[str, Any], status: int | None
-):
+def evaluate_extraction(case: dict[str, Any], data: dict[str, Any], status: int | None):
     if status != 200:
         return False, {"outcome": "api_error", "status": status}
     required = {"summary", "category", "urgency", "customer_sentiment"}
@@ -80,16 +79,16 @@ def evaluate_extraction(
     enums_valid = (
         data.get("category") in {"billing", "technical", "account", "other"}
         and data.get("urgency") in {"low", "medium", "high"}
-        and data.get("customer_sentiment")
-        in {"positive", "neutral", "negative"}
+        and data.get("customer_sentiment") in {"positive", "neutral", "negative"}
     )
     expected = case["expected"]
     summary_ok = contains_all(
         str(data.get("summary", "")), expected["summary_keywords"]
     )
-    exact_ok = all(data.get(field) == expected[field] for field in (
-        "category", "urgency", "customer_sentiment"
-    ))
+    exact_ok = all(
+        data.get(field) == expected[field]
+        for field in ("category", "urgency", "customer_sentiment")
+    )
     passed = schema_valid and enums_valid and summary_ok and exact_ok
     return passed, {
         "outcome": "pass" if passed else "model_failure",
@@ -133,12 +132,14 @@ def run_suite(name: str, cases: list[dict[str, Any]], base_url: str):
             payload = {"message": case["input"]}
         else:
             endpoint = "/chat"
-            payload = {"prompt": (
-                "Answer directly and accurately. Do not invent facts. "
-                "If ambiguous, state what is missing or ask a focused "
-                "clarification. For multilingual input, answer in the "
-                "input language.\n\n" + case["input"]
-            )}
+            payload = {
+                "prompt": (
+                    "Answer directly and accurately. Do not invent facts. "
+                    "If ambiguous, state what is missing or ask a focused "
+                    "clarification. For multilingual input, answer in the "
+                    "input language.\n\n" + case["input"]
+                )
+            }
         status, data, latency = post_json(base_url + endpoint, payload)
         if name == "extraction":
             passed, details = evaluate_extraction(case, data, status)
@@ -147,20 +148,22 @@ def run_suite(name: str, cases: list[dict[str, Any]], base_url: str):
         else:
             passed, details = evaluate_chat(case, data, status)
         usage = data if isinstance(data, dict) else {}
-        rows.append({
-            "id": case["id"],
-            "passed": passed,
-            "status": status,
-            "latency_ms": round(latency, 2),
-            "details": details,
-            "usage": {
-                "prompt_tokens": usage.get("prompt_tokens"),
-                "completion_tokens": usage.get("completion_tokens"),
-                "total_tokens": (usage.get("prompt_tokens") or 0)
-                + (usage.get("completion_tokens") or 0),
-                "estimated_cost_usd": usage.get("estimated_cost_usd"),
-            },
-        })
+        rows.append(
+            {
+                "id": case["id"],
+                "passed": passed,
+                "status": status,
+                "latency_ms": round(latency, 2),
+                "details": details,
+                "usage": {
+                    "prompt_tokens": usage.get("prompt_tokens"),
+                    "completion_tokens": usage.get("completion_tokens"),
+                    "total_tokens": (usage.get("prompt_tokens") or 0)
+                    + (usage.get("completion_tokens") or 0),
+                    "estimated_cost_usd": usage.get("estimated_cost_usd"),
+                },
+            }
+        )
     return summarize(name, rows), rows
 
 
@@ -168,13 +171,15 @@ def summarize(name: str, rows: list[dict[str, Any]]):
     total = len(rows)
     api_errors = sum(row["details"].get("outcome") == "api_error" for row in rows)
     evaluated = [
-        row for row in rows
+        row
+        for row in rows
         if row["details"].get("outcome") in {"pass", "model_failure"}
     ]
     passed = sum(row["details"].get("outcome") == "pass" for row in evaluated)
     schema_checks = [
         row["details"]["schema_valid"]
-        for row in evaluated if "schema_valid" in row["details"]
+        for row in evaluated
+        if "schema_valid" in row["details"]
     ]
     latencies = [row["latency_ms"] for row in rows]
     input_tokens = sum(row["usage"]["prompt_tokens"] or 0 for row in rows)
@@ -188,11 +193,13 @@ def summarize(name: str, rows: list[dict[str, Any]]):
         "model_failures": len(evaluated) - passed,
         "api_errors": api_errors,
         "accuracy": round(passed / len(evaluated), 4) if evaluated else None,
-        "model_failure_rate": round((len(evaluated) - passed) / len(evaluated), 4)
-        if evaluated else None,
+        "model_failure_rate": (
+            round((len(evaluated) - passed) / len(evaluated), 4) if evaluated else None
+        ),
         "api_error_rate": round(api_errors / total, 4) if total else 0,
-        "structured_output_validity": round(sum(schema_checks) / len(schema_checks), 4)
-        if schema_checks else None,
+        "structured_output_validity": (
+            round(sum(schema_checks) / len(schema_checks), 4) if schema_checks else None
+        ),
         "latency_ms": {
             "average": round(sum(latencies) / len(latencies), 2) if latencies else None,
             "p50": percentile(latencies, 0.50),
@@ -226,7 +233,8 @@ def main():
     args = parser.parse_args()
     names = (
         ["chat", "extraction", "classification", "adversarial"]
-        if args.suite == "all" else [args.suite]
+        if args.suite == "all"
+        else [args.suite]
     )
     reports, detailed = [], []
     for name in names:
@@ -242,12 +250,18 @@ def main():
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     output = RESULTS / f"eval-{stamp}.json"
-    output.write_text(json.dumps({
-        "timestamp": stamp,
-        "base_url": args.base_url,
-        "suites": reports,
-        "details": detailed,
-    }, indent=2), encoding="utf-8")
+    output.write_text(
+        json.dumps(
+            {
+                "timestamp": stamp,
+                "base_url": args.base_url,
+                "suites": reports,
+                "details": detailed,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"Saved detailed results to {output}")
 
 
