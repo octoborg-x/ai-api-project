@@ -27,20 +27,21 @@ def contains_none(text:str,items:list[str])->bool:
     low=text.lower(); return not any(x.lower() in low for x in items)
 
 def eval_chat(case,data,status):
-    if status!=200 or "response" not in data: return False,{"reason":"api_failure_or_missing_response"}
+    if status!=200 or "response" not in data: return False,{"outcome":"api_error","reason":"api_failure_or_missing_response","status":status}
     answer=str(data["response"]); exp=case["expected"]
     a=contains_all(answer,exp.get("must_contain_concepts",[]))
     b=contains_none(answer,exp.get("must_not_contain",[]))
-    return a and b,{"concepts_ok":a,"forbidden_ok":b}
+    return a and b,{"outcome":"pass" if a and b else "model_failure","concepts_ok":a,"forbidden_ok":b}
 
 def eval_extraction(case,data,status):
-    if status!=200: return False,{"reason":"api_failure","status":status}
+    if status!=200: return False,{"outcome":"api_error","reason":"api_failure","status":status}
     req={"summary","category","urgency","customer_sentiment"}
     schema=req.issubset(data.keys()) and all(isinstance(data[k],str) for k in req)
     enums=data.get("category") in {"billing","technical","account","other"} and data.get("urgency") in {"low","medium","high"} and data.get("customer_sentiment") in {"positive","neutral","negative"}
     exp=case["expected"]; summary=contains_all(str(data.get("summary","")),exp["summary_keywords"])
     exact=data.get("category")==exp["category"] and data.get("urgency")==exp["urgency"] and data.get("customer_sentiment")==exp["customer_sentiment"]
-    return schema and enums and exact and summary,{"schema_valid":schema,"enum_valid":enums,"summary_ok":summary,"exact_fields_ok":exact}
+    passed=schema and enums and exact and summary
+    return passed,{"outcome":"pass" if passed else "model_failure","schema_valid":schema,"enum_valid":enums,"summary_ok":summary,"exact_fields_ok":exact}
 
 def percentile(values,p):
     if not values:return None
@@ -72,32 +73,31 @@ def run_suite(name,cases,base_url):
     return summarize(name,rows)
 
 def summarize(name,rows):
-    total=len(rows); passed=sum(r["passed"] for r in rows)
-    technical=sum(1 for r in rows if r["status"]!=200)
-    case_failures=total-passed
-    schema_checks=[r["details"].get("schema_valid") for r in rows if "schema_valid" in r["details"]]
+    total=len(rows)
+    api_errors=sum(1 for r in rows if r["details"].get("outcome")=="api_error")
+    evaluated=[r for r in rows if r["details"].get("outcome") in {"pass","model_failure"}]
+    passed=sum(1 for r in evaluated if r["details"].get("outcome")=="pass")
+    model_failures=len(evaluated)-passed
+    schema_checks=[r["details"].get("schema_valid") for r in evaluated if "schema_valid" in r["details"]]
     schema_valid=sum(1 for x in schema_checks if x)
     lats=[r["latency_ms"] for r in rows if r["latency_ms"] is not None]
     inp=sum((r["usage"].get("prompt_tokens") or 0) for r in rows)
     out=sum((r["usage"].get("completion_tokens") or 0) for r in rows)
     costs=sum((r["usage"].get("estimated_cost_usd") or 0) for r in rows)
-    return {"suite":name,"total_cases":total,"passed":passed,"failed":total-passed,
-            "accuracy":round(passed/total,4) if total else 0,
-            "failure_rate":round(case_failures/total,4) if total else 0,
-            "technical_failure_rate":round(technical/total,4) if total else 0,
+    return {"suite":name,"total_cases":total,"evaluated_cases":len(evaluated),
+            "passed":passed,"model_failures":model_failures,"api_errors":api_errors,
+            "accuracy":round(passed/len(evaluated),4) if evaluated else None,
+            "failure_rate":round(model_failures/len(evaluated),4) if evaluated else None,
+            "api_error_rate":round(api_errors/total,4) if total else 0,
             "structured_output_validity":round(schema_valid/len(schema_checks),4) if schema_checks else None,
-            "latency_ms":{"average":round(statistics.mean(lats),2) if lats else None,"p50":round(percentile(lats,.50),2) if lats else None,
-                          "p95":round(percentile(lats,.95),2) if lats else None,"p99":round(percentile(lats,.99),2) if lats else None},
-            "tokens":{"input":inp,"output":out,"total":inp+out,"average_total_per_case":round((inp+out)/total,2) if total else 0},
-            "cost":{"total_usd":round(costs,6),"average_per_request_usd":round(costs/total,6) if total else 0},"cases":rows}
-
+            "latency_ms":
 def load(name): return json.loads((EVALS/f"{name}_cases.json").read_text(encoding="utf-8"))
 
 def print_report(r):
     print("\nLLM EVALUATION\n"+"─"*42)
     print(f"Suite                 {r['suite']}"); print(f"Cases                 {r['total_cases']}")
-    print(f"Passed                {r['passed']}"); print(f"Failed                {r['failed']}")
-    print(f"Accuracy              {r['accuracy']:.1%}"); print(f"Case failure          {r['failure_rate']:.1%}")
+    print(f"Passed                {r["passed"]}"); print(f"Model failures        {r["model_failures"]}"); print(f"API errors            {r["api_errors"]}")
+    print(f"Model accuracy        {r["accuracy"]:.1%}" if r["accuracy"] is not None else "Model accuracy        N/A"); print(f"Model failure rate    {r["failure_rate"]:.1%}" if r["failure_rate"] is not None else "Model failure rate    N/A"); print(f"API error rate        {r["api_error_rate"]:.1%}")
     print(f"Technical failure     {r['technical_failure_rate']:.1%}")
     if r["structured_output_validity"] is not None:
         print(f"Structured validity   {r['structured_output_validity']:.1%}")
@@ -112,9 +112,8 @@ def main():
     names=["chat","extraction","adversarial"] if a.suite=="all" else [a.suite]
     reports=[run_suite(n,load(n),a.base_url.rstrip("/")) for n in names]
     for r in reports: print_report(r)
-    total=sum(r["total_cases"] for r in reports); passed=sum(r["passed"] for r in reports)
+    total=sum(r["total_cases"] for r in reports); evaluated=sum(r["evaluated_cases"] for r in reports); passed=sum(r["passed"] for r in reports); api_errors=sum(r["api_errors"] for r in reports)
     stamp=time.strftime("%Y%m%d-%H%M%S"); path=RESULTS/f"eval-{stamp}.json"
-    path.write_text(json.dumps({"timestamp":stamp,"base_url":a.base_url,"total_cases":total,"passed":passed,"failed":total-passed,
-                                "accuracy":passed/total if total else 0,"suites":reports},indent=2),encoding="utf-8")
+    path.write_text(json.dumps({"timestamp":stamp,"base_url":a.base_url,"total_cases":total,"evaluated_cases":evaluated,"passed":passed,"model_failures":evaluated-passed,"api_errors":api_errors,"model_accuracy":passed/evaluated if evaluated else None,"api_error_rate":api_errors/total if total else 0,"suites":reports},indent=2),encoding="utf-8")
     print(f"\nSaved detailed results to {path}")
 if __name__=="__main__": main()
