@@ -74,13 +74,18 @@ def run_suite(name,cases,base_url):
 def summarize(name,rows):
     total=len(rows); passed=sum(r["passed"] for r in rows)
     technical=sum(1 for r in rows if r["status"]!=200)
+    case_failures=total-passed
+    schema_checks=[r["details"].get("schema_valid") for r in rows if "schema_valid" in r["details"]]
+    schema_valid=sum(1 for x in schema_checks if x)
     lats=[r["latency_ms"] for r in rows if r["latency_ms"] is not None]
     inp=sum((r["usage"].get("prompt_tokens") or 0) for r in rows)
     out=sum((r["usage"].get("completion_tokens") or 0) for r in rows)
     costs=sum((r["usage"].get("estimated_cost_usd") or 0) for r in rows)
     return {"suite":name,"total_cases":total,"passed":passed,"failed":total-passed,
             "accuracy":round(passed/total,4) if total else 0,
-            "failure_rate":round(technical/total,4) if total else 0,
+            "failure_rate":round(case_failures/total,4) if total else 0,
+            "technical_failure_rate":round(technical/total,4) if total else 0,
+            "structured_output_validity":round(schema_valid/len(schema_checks),4) if schema_checks else None,
             "latency_ms":{"average":round(statistics.mean(lats),2) if lats else None,"p50":round(percentile(lats,.50),2) if lats else None,
                           "p95":round(percentile(lats,.95),2) if lats else None,"p99":round(percentile(lats,.99),2) if lats else None},
             "tokens":{"input":inp,"output":out,"total":inp+out,"average_total_per_case":round((inp+out)/total,2) if total else 0},
