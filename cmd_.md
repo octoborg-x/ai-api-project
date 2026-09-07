@@ -52,7 +52,8 @@ It measures:
 - Latency: average, P50, P95, P99
 - Input/output/total tokens
 - Estimated cost
-- Technical failure rate
+- Model failure rate
+- API error rate
 - Per-case results
 
 Detailed JSON output is written to `results/`.
