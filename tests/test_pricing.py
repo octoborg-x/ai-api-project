@@ -1,4 +1,4 @@
-import pricing
+from app.telemetry import metrics as pricing
 
 
 def test_free_model_cost_is_zero():

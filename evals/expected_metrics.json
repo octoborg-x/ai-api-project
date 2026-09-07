@@ -1,0 +1,10 @@
+{
+  "targets": {
+    "model_accuracy_min": 0.9,
+    "structured_output_validity_min": 0.95,
+    "api_error_rate_max": 0.05,
+    "p95_latency_ms": "record_baseline",
+    "cost_per_request_usd": "record_baseline"
+  },
+  "note": "Engineering targets for regression tracking; not current measured results."
+}

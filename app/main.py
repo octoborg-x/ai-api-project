@@ -4,10 +4,10 @@ from fastapi.responses import StreamingResponse
 from openai import APIError, APITimeoutError, RateLimitError
 from pydantic import BaseModel
 
-from llm_client import ask, ask_stream, extract_ticket_info
+from app.llm.client import ask, ask_stream, extract_ticket_info
 
 # local
-from models import ChatRequest, ChatResponse, TicketExtraction
+from app.llm.schemas import ChatRequest, ChatResponse, TicketExtraction
 
 app = FastAPI(title="AI API Project")
 

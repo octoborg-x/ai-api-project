@@ -9,7 +9,7 @@ import pytest
 from openai import APIError, APITimeoutError, RateLimitError
 from tenacity import wait_none
 
-import llm_client
+from app.llm import client as llm_client
 
 
 def completion_response(content, prompt_tokens=10, completion_tokens=5):

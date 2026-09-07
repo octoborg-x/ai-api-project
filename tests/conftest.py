@@ -1,4 +1,4 @@
-"""Pytest configuration for the repository's flat module layout."""
+"""Pytest configuration for the application package."""
 
 import sys
 from pathlib import Path

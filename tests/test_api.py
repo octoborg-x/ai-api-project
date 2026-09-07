@@ -5,8 +5,8 @@ os.environ.setdefault("MODEL_NAME", "cohere/north-mini-code:free")
 
 import pytest
 
-import app as api
-from models import TicketExtraction
+import app.main as api
+from app.llm.schemas import TicketExtraction
 
 
 class FakeRateLimitError(Exception):
