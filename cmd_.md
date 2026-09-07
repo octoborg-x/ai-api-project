@@ -24,7 +24,7 @@ MODEL_NAME=your_model
 From the repository root:
 
 ```bash
-uvicorn app:app --reload
+uvicorn app.main:app --reload
 ```
 
 Check health:
@@ -56,13 +56,14 @@ It measures:
 - API error rate
 - Per-case results
 
-Detailed JSON output is written to `results/`.
+Detailed JSON output is written to `evals/results/`
 
 ## Run individual suites
 
 ```bash
 python evals/run_eval.py --suite chat
 python evals/run_eval.py --suite extraction
+python evals/run_eval.py --suite classification
 python evals/run_eval.py --suite adversarial
 ```
 

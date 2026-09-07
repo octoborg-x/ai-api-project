@@ -17,8 +17,8 @@ from tenacity import (
 )
 
 # local
-from models import TicketExtraction
-from pricing import calculate_cost
+from app.llm.schemas import TicketExtraction
+from app.telemetry.metrics import calculate_cost
 
 load_dotenv()
 

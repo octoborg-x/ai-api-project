@@ -16,7 +16,11 @@ Project 1 of an 8-week AI Engineer upskilling plan.
 Python · FastAPI · Pydantic · OpenRouter (OpenAI-compatible SDK) · tenacity
 
 ## Architecture
-Client → FastAPI → LLM Client (retry/timeout wrapper) → OpenRouter → Model
+Client → `app.main` → `app.llm.client` → OpenRouter → Model
+
+Application code is organized under `app/`; LLM schemas live in `app/llm/schemas.py`, provider/retry logic in `app/llm/client.py`, and cost/telemetry helpers in `app/telemetry/metrics.py`.
+
+Evaluation datasets and generated reports live under `evals/`.
 
 ## Setup
 [keep your existing setup steps]
