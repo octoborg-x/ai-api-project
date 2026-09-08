@@ -156,6 +156,7 @@ async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
         nonlocal called
         called = True
         from starlette.responses import Response
+
         return Response("ok")
 
     await api.api_security_middleware(request, call_next)
