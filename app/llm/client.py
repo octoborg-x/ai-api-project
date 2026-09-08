@@ -4,6 +4,7 @@ import json
 # third-party
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 
 from dotenv import load_dotenv
@@ -17,8 +18,9 @@ from tenacity import (
 )
 
 # local
+from app.llm.router import route
 from app.llm.schemas import TicketExtraction
-from app.telemetry.metrics import calculate_cost
+from app.telemetry.metrics import calculate_cost, record_call
 
 load_dotenv()
 
@@ -28,7 +30,6 @@ client = AsyncOpenAI(
     timeout=30.0,  # seconds
 )
 
-MODEL = os.environ["MODEL_NAME"]
 
 logger = logging.getLogger(__name__)
 
@@ -42,25 +43,50 @@ llm_retry = retry(
 
 
 @llm_retry
+async def _completion(model: str, messages: list[dict[str, str]]):
+    return await client.chat.completions.create(model=model, messages=messages)
+
+
+@llm_retry
 async def ask(prompt: str) -> dict:
-    response = await client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    usage = response.usage
-    return {
-        "response": response.choices[0].message.content,
-        "prompt_tokens": response.usage.prompt_tokens,
-        "completion_tokens": response.usage.completion_tokens,
-        "estimated_cost_usd": calculate_cost(
-            MODEL, usage.prompt_tokens, usage.completion_tokens
-        ),
-    }
+    decision = route("chat", prompt)
+    started = time.perf_counter()
+    success = False
+    usage = None
+
+    try:
+        response = await _completion(
+            decision.model,
+            [{"role": "user", "content": prompt}],
+        )
+        usage = response.usage
+        success = True
+        return {
+            "response": response.choices[0].message.content,
+            "model": decision.model,
+            "route": decision.tier,
+            "prompt_tokens": usage.prompt_tokens,
+            "completion_tokens": usage.completion_tokens,
+            "estimated_cost_usd": calculate_cost(
+                decision.model, usage.prompt_tokens, usage.completion_tokens
+            ),
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+            "success": True,
+        }
+    finally:
+        record_call(
+            model=decision.model,
+            tier=decision.tier,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) if usage else 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) if usage else 0,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            success=success,
+        )
 
 
 async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
     stream = await client.chat.completions.create(
-        model=MODEL,
+        model=route("chat", prompt).model,
         messages=[{"role": "user", "content": prompt}],
         stream=True,
     )
@@ -72,6 +98,10 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
 
 @llm_retry
 async def extract_ticket_info(message: str) -> TicketExtraction:
+    decision = route("extraction", message)
+    started = time.perf_counter()
+    success = False
+    usage = None
     prompt = f"""Extract structured information from this customer support message.
 
 Respond with ONLY valid JSON, no other text, matching this exact structure:
@@ -84,10 +114,11 @@ Respond with ONLY valid JSON, no other text, matching this exact structure:
 
 Customer message: {message}"""
 
-    response = await client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
+    response = await _completion(
+        decision.model,
+        [{"role": "user", "content": prompt}],
     )
+    usage = response.usage
 
     raw = response.choices[0].message.content.strip()
 
@@ -97,6 +128,16 @@ Customer message: {message}"""
 
     try:
         data = json.loads(raw)
+        success = True
         return TicketExtraction(**data)
     except (json.JSONDecodeError, ValueError) as e:
         raise ValueError(f"Model returned invalid structured output: {raw}") from e
+    finally:
+        record_call(
+            model=decision.model,
+            tier=decision.tier,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) if usage else 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) if usage else 0,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            success=success,
+        )
