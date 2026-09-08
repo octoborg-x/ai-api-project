@@ -133,12 +133,13 @@ async def test_extract_ticket_maps_invalid_output_to_422(monkeypatch):
 async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
     limiter = api.InMemoryRateLimiter(limit=1, window_seconds=60)
     monkeypatch.setattr(api, "rate_limiter", limiter)
+    monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
 
     scope = {
         "type": "http",
         "method": "POST",
         "path": "/chat",
-        "headers": [(b"authorization", b"Bearer wrong")],
+        "headers": [(b"authorization", b"Bearer secret-token")],
         "client": ("test-client", 1234),
         "query_string": b"",
         "scheme": "http",
@@ -154,7 +155,8 @@ async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
     async def call_next(_request):
         nonlocal called
         called = True
-        return api.Response("ok")
+        from starlette.responses import Response
+        return Response("ok")
 
     await api.api_security_middleware(request, call_next)
     assert called is True
