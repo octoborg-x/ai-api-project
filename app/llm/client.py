@@ -47,7 +47,6 @@ async def _completion(model: str, messages: list[dict[str, str]]):
     return await client.chat.completions.create(model=model, messages=messages)
 
 
-@llm_retry
 async def ask(prompt: str) -> dict:
     decision = route("chat", prompt)
     started = time.perf_counter()
@@ -96,7 +95,6 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
             yield delta
 
 
-@llm_retry
 async def extract_ticket_info(message: str) -> TicketExtraction:
     decision = route("extraction", message)
     started = time.perf_counter()
