@@ -167,4 +167,5 @@ Customer message: {message}"""
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
             status=status,
+            attempt=1,
         )
