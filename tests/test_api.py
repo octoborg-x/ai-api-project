@@ -134,7 +134,7 @@ async def test_extract_ticket_maps_invalid_output_to_422(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
-    limiter = api.InMemoryRateLimiter(limit=1, window_seconds=60)
+    limiter = InMemoryRateLimiter(limit=1, window_seconds=60)
     monkeypatch.setattr(api, "rate_limiter", limiter)
     monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
 
@@ -156,8 +156,6 @@ async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
     async def call_next(_request):
         nonlocal called
         called = True
-        from starlette.responses import Response
-
         return Response("ok")
 
     await api.api_security_middleware(request, call_next)
@@ -189,8 +187,6 @@ async def test_authenticate_accepts_bearer_token(monkeypatch):
 @pytest.mark.asyncio
 async def test_authenticate_rejects_invalid_token(monkeypatch):
     monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
-    from starlette.requests import Request
-
     scope = {
         "type": "http",
         "method": "POST",
