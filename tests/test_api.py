@@ -4,8 +4,11 @@ os.environ.setdefault("OPENROUTER_API_KEY", "test-key")
 os.environ.setdefault("MODEL_NAME", "cohere/north-mini-code:free")
 
 import pytest
+from starlette.requests import Request
+from starlette.responses import Response
 
 import app.main as api
+from app.security.rate_limit import InMemoryRateLimiter
 from app.llm.schemas import TicketExtraction
 
 
@@ -147,8 +150,6 @@ async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
         "root_path": "",
         "http_version": "1.1",
     }
-    from starlette.requests import Request
-
     request = Request(scope)
     called = False
 
@@ -170,8 +171,6 @@ async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
 @pytest.mark.asyncio
 async def test_authenticate_accepts_bearer_token(monkeypatch):
     monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
-    from starlette.requests import Request
-
     scope = {
         "type": "http",
         "method": "POST",
