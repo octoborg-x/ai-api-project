@@ -13,6 +13,9 @@ Project 1 of an 8-week AI Engineer upskilling plan.
 - Deterministic model routing across cheap, balanced, and powerful tiers
 - Per-call model, token, latency, cost, and success telemetry
 - Swappable model config via environment variables
+- Bearer-token authentication on `POST /chat`
+- Process-local rate limiting before authentication
+- Rate-limit response headers and `Retry-After` handling
 
 ## Stack
 Python · FastAPI · Pydantic · OpenRouter (OpenAI-compatible SDK) · tenacity
