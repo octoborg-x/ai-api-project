@@ -1,5 +1,3 @@
-import pytest
-
 from app.llm.router import route
 
 
