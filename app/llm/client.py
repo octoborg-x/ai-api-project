@@ -1,16 +1,14 @@
 # standard library
 import json
-
-# third-party
 import logging
 import os
 import time
 from collections.abc import AsyncGenerator
 
+# third-party
 from dotenv import load_dotenv
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 from tenacity import (
-    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
@@ -27,17 +25,30 @@ load_dotenv()
 client = AsyncOpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1",
-    timeout=30.0,  # seconds
+    timeout=30.0,
 )
 
-
 logger = logging.getLogger(__name__)
+
+
+def _log_retry(retry_state) -> None:
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    logger.warning(
+        "llm retry scheduled",
+        extra={
+            "event": "llm.retry",
+            "attempt": retry_state.attempt_number,
+            "status": "retrying",
+            "error_type": type(exc).__name__ if exc else "unknown",
+        },
+    )
+
 
 llm_retry = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception_type((APITimeoutError, RateLimitError, APIError)),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
+    before_sleep=_log_retry,
     reraise=True,
 )
 
@@ -50,8 +61,8 @@ async def _completion(model: str, messages: list[dict[str, str]]):
 async def ask(prompt: str) -> dict:
     decision = route("chat", prompt)
     started = time.perf_counter()
-    success = False
     usage = None
+    status = "error"
 
     try:
         response = await _completion(
@@ -59,7 +70,7 @@ async def ask(prompt: str) -> dict:
             [{"role": "user", "content": prompt}],
         )
         usage = response.usage
-        success = True
+        status = "success"
         return {
             "response": response.choices[0].message.content,
             "model": decision.model,
@@ -76,31 +87,47 @@ async def ask(prompt: str) -> dict:
         record_call(
             model=decision.model,
             tier=decision.tier,
-            prompt_tokens=getattr(usage, "prompt_tokens", 0) if usage else 0,
-            completion_tokens=getattr(usage, "completion_tokens", 0) if usage else 0,
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+            completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
-            success=success,
+            status=status,
+            attempt=1,
         )
 
 
 async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
-    stream = await client.chat.completions.create(
-        model=route("chat", prompt).model,
-        messages=[{"role": "user", "content": prompt}],
-        stream=True,
-    )
-    async for chunk in stream:
-        delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+    decision = route("chat", prompt)
+    started = time.perf_counter()
+    status = "error"
+    try:
+        stream = await client.chat.completions.create(
+            model=decision.model,
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+        status = "success"
+    finally:
+        record_call(
+            model=decision.model,
+            tier=decision.tier,
+            prompt_tokens=None,
+            completion_tokens=None,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            status=status,
+            attempt=1,
+        )
 
 
 @llm_retry
 async def extract_ticket_info(message: str) -> TicketExtraction:
     decision = route("extraction", message)
     started = time.perf_counter()
-    success = False
     usage = None
+    status = "error"
     raw = ""
 
     prompt = f"""Extract structured information from this customer support message.
@@ -127,16 +154,18 @@ Customer message: {message}"""
             raw = raw.strip(chr(96)).removeprefix("json").strip()
 
         data = json.loads(raw)
-        success = True
-        return TicketExtraction(**data)
+        result = TicketExtraction(**data)
+        status = "success"
+        return result
     except (json.JSONDecodeError, ValueError) as exc:
         raise ValueError(f"Model returned invalid structured output: {raw}") from exc
     finally:
         record_call(
             model=decision.model,
             tier=decision.tier,
-            prompt_tokens=getattr(usage, "prompt_tokens", 0) if usage else 0,
-            completion_tokens=getattr(usage, "completion_tokens", 0) if usage else 0,
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+            completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
-            success=success,
+            status=status,
+            attempt=1,
         )
