@@ -8,12 +8,16 @@ from collections.abc import AsyncGenerator
 # third-party
 from dotenv import load_dotenv
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 # local
 from app.llm.router import route
 from app.llm.schemas import TicketExtraction
-from app.telemetry.logging import get_request_id, get_trace_id
 from app.telemetry.metrics import calculate_cost, record_call
 
 load_dotenv()

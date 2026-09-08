@@ -43,9 +43,19 @@ class JsonFormatter(logging.Formatter):
             "request_id": get_request_id(),
             "trace_id": get_trace_id(),
         }
-        for key in ("event", "model", "tier", "latency_ms", "input_tokens",
-                    "output_tokens", "total_tokens", "cost_usd", "status",
-                    "attempt", "error_type"):
+        for key in (
+            "event",
+            "model",
+            "tier",
+            "latency_ms",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cost_usd",
+            "status",
+            "attempt",
+            "error_type",
+        ):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
         return json.dumps(payload, separators=(",", ":"))

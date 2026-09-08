@@ -49,7 +49,9 @@ async def observability_middleware(request: Request, call_next):
             "request completed",
             extra={
                 "event": "request.end",
-                "latency_ms": round((__import__("time").perf_counter() - started) * 1000, 2),
+                "latency_ms": round(
+                    (__import__("time").perf_counter() - started) * 1000, 2
+                ),
                 "status": status,
             },
         )
