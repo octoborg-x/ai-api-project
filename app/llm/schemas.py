@@ -9,9 +9,13 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    model: str
+    route: Literal["cheap", "balanced", "powerful"]
     prompt_tokens: int
     completion_tokens: int
     estimated_cost_usd: float
+    latency_ms: float
+    success: bool
 
 
 class TicketExtraction(BaseModel):
