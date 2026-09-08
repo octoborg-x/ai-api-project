@@ -1,15 +1,59 @@
 # third-party
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from openai import APIError, APITimeoutError, RateLimitError
 from pydantic import BaseModel
 
-from app.llm.client import ask, ask_stream, extract_ticket_info
-
 # local
+from app.llm.client import ask, ask_stream, extract_ticket_info
 from app.llm.schemas import ChatRequest, ChatResponse, TicketExtraction
+from app.telemetry.logging import (
+    clear_request_context,
+    configure_logging,
+    get_request_id,
+    get_trace_id,
+    set_request_context,
+)
 
+configure_logging()
 app = FastAPI(title="AI API Project")
+
+
+@app.middleware("http")
+async def observability_middleware(request: Request, call_next):
+    tokens = set_request_context(
+        request.headers.get("x-request-id"),
+        request.headers.get("x-trace-id"),
+    )
+    logger = __import__("logging").getLogger("app.request")
+    started = __import__("time").perf_counter()
+    status = "success"
+    try:
+        logger.info(
+            "request started",
+            extra={
+                "event": "request.start",
+                "status": "started",
+            },
+        )
+        response = await call_next(request)
+        response.headers["x-request-id"] = get_request_id()
+        response.headers["x-trace-id"] = get_trace_id()
+        status = "success" if response.status_code < 500 else "error"
+        return response
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        logger.info(
+            "request completed",
+            extra={
+                "event": "request.end",
+                "latency_ms": round((__import__("time").perf_counter() - started) * 1000, 2),
+                "status": status,
+            },
+        )
+        clear_request_context(tokens)
 
 
 @app.get("/health")
