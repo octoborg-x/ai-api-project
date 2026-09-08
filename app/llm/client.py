@@ -8,16 +8,12 @@ from collections.abc import AsyncGenerator
 # third-party
 from dotenv import load_dotenv
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # local
 from app.llm.router import route
 from app.llm.schemas import TicketExtraction
+from app.telemetry.logging import get_request_id, get_trace_id
 from app.telemetry.metrics import calculate_cost, record_call
 
 load_dotenv()
@@ -63,7 +59,6 @@ async def ask(prompt: str) -> dict:
     started = time.perf_counter()
     usage = None
     status = "error"
-    attempt = 1
 
     try:
         response = await _completion(
@@ -92,7 +87,6 @@ async def ask(prompt: str) -> dict:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
             status=status,
-            attempt=attempt,
         )
 
 
@@ -100,7 +94,6 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
     decision = route("chat", prompt)
     started = time.perf_counter()
     status = "error"
-    chunks = 0
     try:
         stream = await client.chat.completions.create(
             model=decision.model,
@@ -110,7 +103,6 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
         async for chunk in stream:
             delta = chunk.choices[0].delta.content
             if delta:
-                chunks += 1
                 yield delta
         status = "success"
     finally:
@@ -121,15 +113,6 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
             completion_tokens=None,
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
             status=status,
-            attempt=1,
-        )
-        logger.info(
-            "stream completed",
-            extra={
-                "event": "llm.stream",
-                "status": status,
-                "attempt": chunks,
-            },
         )
 
 
@@ -139,7 +122,6 @@ async def extract_ticket_info(message: str) -> TicketExtraction:
     started = time.perf_counter()
     usage = None
     status = "error"
-    attempt = 1
     raw = ""
 
     prompt = f"""Extract structured information from this customer support message.
@@ -179,5 +161,4 @@ Customer message: {message}"""
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
             status=status,
-            attempt=attempt,
         )
