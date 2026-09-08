@@ -5,9 +5,9 @@ to use. It uses the request type and a small complexity heuristic, so routing
 itself adds no token cost.
 """
 
-from dataclasses import dataclass
 import os
 import re
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
