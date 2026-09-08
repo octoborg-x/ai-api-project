@@ -1,7 +1,7 @@
 # AI API Project — Evaluation Commands
 
 ## Setup
-Create and activate a virtual environment, then install the existing requirements:
+Create and activate a virtual environment, then install runtime dependencies and development tools from `pyproject.toml`:
 
 ```bash
 python -m venv .venv
@@ -9,7 +9,9 @@ python -m venv .venv
 source .venv/bin/activate
 # Windows PowerShell:
 # .venv\\Scripts\\Activate.ps1
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install .
+python -m pip install --group dev
 ```
 
 Create `.env` using the project's existing configuration:
