@@ -6,6 +6,8 @@ MODEL_PRICING = {
     "cohere/north-mini-code:free": {"input": 0.0, "output": 0.0},
 }
 
+logger = logging.getLogger(__name__)
+
 
 def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
     pricing = MODEL_PRICING.get(model, {"input": 0.0, "output": 0.0})
@@ -14,28 +16,39 @@ def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> fl
     return round(input_cost + output_cost, 6)
 
 
-logger = logging.getLogger(__name__)
-
-
 def record_call(
     *,
     model: str,
     tier: str,
-    prompt_tokens: int,
-    completion_tokens: int,
+    prompt_tokens: int | None,
+    completion_tokens: int | None,
     latency_ms: float,
-    success: bool,
+    status: str,
+    attempt: int,
 ) -> None:
-    """Emit one structured telemetry event without storing prompt contents."""
-    logger.info(
-        "llm_call model=%s tier=%s prompt_tokens=%d completion_tokens=%d "
-        "total_tokens=%d latency_ms=%.2f cost_usd=%.6f success=%s",
-        model,
-        tier,
-        prompt_tokens,
-        completion_tokens,
-        prompt_tokens + completion_tokens,
-        latency_ms,
-        calculate_cost(model, prompt_tokens, completion_tokens),
-        success,
+    """Emit one structured LLM telemetry event without storing prompt contents."""
+    input_tokens = prompt_tokens if prompt_tokens is not None else None
+    output_tokens = completion_tokens if completion_tokens is not None else None
+    total_tokens = (
+        input_tokens + output_tokens
+        if input_tokens is not None and output_tokens is not None
+        else None
     )
+    cost = (
+        calculate_cost(model, input_tokens, output_tokens)
+        if input_tokens is not None and output_tokens is not None
+        else None
+    )
+    extra = {
+        "event": "llm.call",
+        "model": model,
+        "tier": tier,
+        "latency_ms": latency_ms,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "cost_usd": cost,
+        "status": status,
+        "attempt": attempt,
+    }
+    logger.info("llm call", extra=extra)
