@@ -42,7 +42,6 @@ llm_retry = retry(
 )
 
 
-@llm_retry
 async def _completion(model: str, messages: list[dict[str, str]]):
     return await client.chat.completions.create(model=model, messages=messages)
 
