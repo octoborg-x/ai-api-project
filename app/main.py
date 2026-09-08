@@ -10,6 +10,8 @@ from pydantic import BaseModel
 # local
 from app.llm.client import ask, ask_stream, extract_ticket_info
 from app.llm.schemas import ChatRequest, ChatResponse, TicketExtraction
+from app.security.auth import authenticate
+from app.security.rate_limit import client_key, rate_limiter
 from app.telemetry.logging import (
     clear_request_context,
     configure_logging,
@@ -34,10 +36,7 @@ async def observability_middleware(request: Request, call_next):
     try:
         logger.info(
             "request started",
-            extra={
-                "event": "request.start",
-                "status": "started",
-            },
+            extra={"event": "request.start", "status": "started"},
         )
         response = await call_next(request)
         response.headers["x-request-id"] = get_request_id()
@@ -57,6 +56,19 @@ async def observability_middleware(request: Request, call_next):
             },
         )
         clear_request_context(tokens)
+
+
+@app.middleware("http")
+async def api_security_middleware(request: Request, call_next):
+    """Enforce the API boundary in the intended order: rate limit -> auth -> validation -> LLM."""
+    if request.url.path == "/chat" and request.method == "POST":
+        remaining, window = rate_limiter.check(client_key(request))
+        authenticate(request)
+        response = await call_next(request)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Window"] = str(window)
+        return response
+    return await call_next(request)
 
 
 @app.get("/health")
