@@ -1,13 +1,11 @@
 import logging
 import time
 
-# third-party
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from openai import APIError, APITimeoutError, RateLimitError
 from pydantic import BaseModel
 
-# local
 from app.llm.client import ask, ask_stream, extract_ticket_info
 from app.llm.schemas import ChatRequest, ChatResponse, TicketExtraction
 from app.security.auth import authenticate
@@ -60,7 +58,7 @@ async def observability_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def api_security_middleware(request: Request, call_next):
-    """Enforce the API boundary in the intended order: rate limit -> auth -> validation -> LLM."""
+    """Enforce rate limit -> authentication -> validation -> LLM."""
     if request.url.path == "/chat" and request.method == "POST":
         remaining, window = rate_limiter.check(client_key(request))
         authenticate(request)
