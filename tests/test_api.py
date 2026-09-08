@@ -8,8 +8,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import app.main as api
-from app.security.rate_limit import InMemoryRateLimiter
 from app.llm.schemas import TicketExtraction
+from app.security.rate_limit import InMemoryRateLimiter
 
 
 class FakeRateLimitError(Exception):
