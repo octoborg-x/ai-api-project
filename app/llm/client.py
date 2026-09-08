@@ -118,6 +118,7 @@ async def ask_stream(prompt: str) -> AsyncGenerator[str, None]:
             completion_tokens=None,
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
             status=status,
+            attempt=1,
         )
 
 
