@@ -1,3 +1,6 @@
+import logging
+import time
+
 # third-party
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -16,6 +19,7 @@ from app.telemetry.logging import (
 )
 
 configure_logging()
+logger = logging.getLogger("app.request")
 app = FastAPI(title="AI API Project")
 
 
@@ -25,8 +29,7 @@ async def observability_middleware(request: Request, call_next):
         request.headers.get("x-request-id"),
         request.headers.get("x-trace-id"),
     )
-    logger = __import__("logging").getLogger("app.request")
-    started = __import__("time").perf_counter()
+    started = time.perf_counter()
     status = "success"
     try:
         logger.info(
@@ -49,9 +52,7 @@ async def observability_middleware(request: Request, call_next):
             "request completed",
             extra={
                 "event": "request.end",
-                "latency_ms": round(
-                    (__import__("time").perf_counter() - started) * 1000, 2
-                ),
+                "latency_ms": round((time.perf_counter() - started) * 1000, 2),
                 "status": status,
             },
         )
