@@ -1,5 +1,6 @@
 # Prices per 1M tokens, in USD. Update if you switch models.
 import logging
+
 # Free models are $0 — but structure this to work for paid models too.
 MODEL_PRICING = {
     "cohere/north-mini-code:free": {"input": 0.0, "output": 0.0},

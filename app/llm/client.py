@@ -129,9 +129,7 @@ Customer message: {message}"""
         success = True
         return TicketExtraction(**data)
     except (json.JSONDecodeError, ValueError) as exc:
-        raise ValueError(
-            f"Model returned invalid structured output: {raw}"
-        ) from exc
+        raise ValueError(f"Model returned invalid structured output: {raw}") from exc
     finally:
         record_call(
             model=decision.model,
