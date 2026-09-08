@@ -1,11 +1,9 @@
-# standard library
 import json
 import logging
 import os
 import time
 from collections.abc import AsyncGenerator
 
-# third-party
 from dotenv import load_dotenv
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 from tenacity import (
@@ -15,7 +13,6 @@ from tenacity import (
     wait_exponential,
 )
 
-# local
 from app.llm.router import route
 from app.llm.schemas import TicketExtraction
 from app.telemetry.metrics import calculate_cost, record_call
