@@ -100,6 +100,8 @@ async def extract_ticket_info(message: str) -> TicketExtraction:
     started = time.perf_counter()
     success = False
     usage = None
+    raw = ""
+
     prompt = f"""Extract structured information from this customer support message.
 
 Respond with ONLY valid JSON, no other text, matching this exact structure:
@@ -112,24 +114,24 @@ Respond with ONLY valid JSON, no other text, matching this exact structure:
 
 Customer message: {message}"""
 
-    response = await _completion(
-        decision.model,
-        [{"role": "user", "content": prompt}],
-    )
-    usage = response.usage
-
-    raw = response.choices[0].message.content.strip()
-
-    # Some models wrap JSON in markdown code fences — strip if present
-    if raw.startswith("```"):
-        raw = raw.strip("`").removeprefix("json").strip()
-
     try:
+        response = await _completion(
+            decision.model,
+            [{"role": "user", "content": prompt}],
+        )
+        usage = response.usage
+        raw = response.choices[0].message.content.strip()
+
+        if raw.startswith(chr(96) * 3):
+            raw = raw.strip(chr(96)).removeprefix("json").strip()
+
         data = json.loads(raw)
         success = True
         return TicketExtraction(**data)
-    except (json.JSONDecodeError, ValueError) as e:
-        raise ValueError(f"Model returned invalid structured output: {raw}") from e
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(
+            f"Model returned invalid structured output: {raw}"
+        ) from exc
     finally:
         record_call(
             model=decision.model,
