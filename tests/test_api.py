@@ -32,9 +32,13 @@ async def test_chat_returns_validated_response(monkeypatch):
         assert prompt == "hello"
         return {
             "response": "Hi!",
+            "model": "test/model",
+            "route": "balanced",
             "prompt_tokens": 3,
             "completion_tokens": 2,
             "estimated_cost_usd": 0.001,
+            "latency_ms": 10.0,
+            "success": True,
         }
 
     monkeypatch.setattr(api, "ask", fake_ask)
