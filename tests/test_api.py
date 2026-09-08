@@ -127,3 +127,80 @@ async def test_extract_ticket_maps_invalid_output_to_422(monkeypatch):
 
     assert exc_info.value.status_code == 422
     assert "invalid structured output" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_chat_security_middleware_rate_limits_before_auth(monkeypatch):
+    limiter = api.InMemoryRateLimiter(limit=1, window_seconds=60)
+    monkeypatch.setattr(api, "rate_limiter", limiter)
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/chat",
+        "headers": [(b"authorization", b"Bearer wrong")],
+        "client": ("test-client", 1234),
+        "query_string": b"",
+        "scheme": "http",
+        "server": ("test", 80),
+        "root_path": "",
+        "http_version": "1.1",
+    }
+    from starlette.requests import Request
+
+    request = Request(scope)
+    called = False
+
+    async def call_next(_request):
+        nonlocal called
+        called = True
+        return api.Response("ok")
+
+    await api.api_security_middleware(request, call_next)
+    assert called is True
+
+    with pytest.raises(api.HTTPException) as exc_info:
+        await api.api_security_middleware(request, call_next)
+    assert exc_info.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_authenticate_accepts_bearer_token(monkeypatch):
+    monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
+    from starlette.requests import Request
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/chat",
+        "headers": [(b"authorization", b"Bearer secret-token")],
+        "client": ("test-client", 1234),
+        "query_string": b"",
+        "scheme": "http",
+        "server": ("test", 80),
+        "root_path": "",
+        "http_version": "1.1",
+    }
+    assert api.authenticate(Request(scope)) == "api-token"
+
+
+@pytest.mark.asyncio
+async def test_authenticate_rejects_invalid_token(monkeypatch):
+    monkeypatch.setenv("API_AUTH_TOKEN", "secret-token")
+    from starlette.requests import Request
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/chat",
+        "headers": [(b"authorization", b"Bearer wrong")],
+        "client": ("test-client", 1234),
+        "query_string": b"",
+        "scheme": "http",
+        "server": ("test", 80),
+        "root_path": "",
+        "http_version": "1.1",
+    }
+    with pytest.raises(api.HTTPException) as exc_info:
+        api.authenticate(Request(scope))
+    assert exc_info.value.status_code == 401
