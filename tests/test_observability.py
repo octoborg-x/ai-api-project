@@ -46,6 +46,7 @@ def test_record_call_does_not_log_prompt_contents(caplog):
             completion_tokens=5,
             latency_ms=25.5,
             status="success",
+            attempt=1,
         )
 
     message = caplog.records[-1].getMessage()
