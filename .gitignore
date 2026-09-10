@@ -8,3 +8,8 @@ evals/results/*.json
 web/node_modules/
 web/.next/
 web/.env.local
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
