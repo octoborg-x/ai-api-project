@@ -1,19 +1,10 @@
 [MASTER]
-ignore=venv
-
-[MESSAGES CONTROL]
-# C0114: Missing module docstring
-# C0115: Missing class docstring
-# C0116: Missing function docstring
-# R0903: Too few public methods (common with Pydantic models)
-disable=C0114,C0115,C0116,R0903
-
-[FORMAT]
-max-line-length=100
+# Add the current directory and the specific week directory to the path
+# so Pylint can find 'chunker'
+init-hook="import sys; sys.path.append('.'); sys.path.append('./week2/day2')"
 
 [BASIC]
-# Allow shorter variable names common in loops or math
-good-names=i,j,k,ex,Run,_
-
-[DESIGN]
-max-args=5
+# Allow snake_case for constants (module-level variables)
+# This fixes: Constant name "document" doesn't conform to UPPER_CASE naming style
+const-naming-style=snake_case
+const-rgx=[a-z_][a-z0-9_]{2,30}$

@@ -1,15 +1,30 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        args: [ --fix, --exit-non-zero-on-fix ]
+      - id: ruff-format
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+
   - repo: https://github.com/psf/black
-    rev: 26.5.1
+    rev: 24.2.0
     hooks:
       - id: black
         language_version: python3.12
-
-  - repo: https://github.com/pycqa/isort
-    rev: 9.0.1
-    hooks:
-      - id: isort
-        args: [--profile=black]
 
   - repo: local
     hooks:
@@ -18,7 +33,4 @@ repos:
         entry: pylint
         language: system
         types: [python]
-        args:
-          - "--rcfile=.pylintrc"
-        pass_filenames: true
-        require_serial: true
+        args: ["--rcfile=.pylintrc"]

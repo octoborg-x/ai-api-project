@@ -1,3 +1,5 @@
+"""Semantic search implementation using cosine similarity."""
+
 import numpy as np
 
 

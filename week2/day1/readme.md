@@ -13,4 +13,3 @@ Similarity score
 Sort
    ↓
 Top result
-

@@ -12,6 +12,15 @@ The backend and frontend intentionally live in the same repository and are devel
 - `evals/` — evaluation datasets and runners
 - `tests/` — backend tests
 
+## Development Setup
+
+To enable automatic linting and formatting on every commit:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
 In development, run FastAPI on port 8000 and Next.js on port 3000. Next.js proxies `/api/backend/*` to `BACKEND_URL`, keeping browser calls same-origin while preserving the backend boundary.
 
 ## Frontend
