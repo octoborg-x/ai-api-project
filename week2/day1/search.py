@@ -65,7 +65,7 @@ def main():
     )
 
     for result_item in search_results:
-        print(f"{result_item['score']:.3f} - " f"{result_item['text']}")
+        print(f"{result_item['score']:.3f} - {result_item['text']}")
 
 
 if __name__ == "__main__":
