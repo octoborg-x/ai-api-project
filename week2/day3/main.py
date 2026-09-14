@@ -73,16 +73,15 @@ def main():
         if query.lower() in ["exit", "quit"]:
             break
 
-        query_emb = generate_embedding(query)
-        results = retriever.search(query_emb, top_k=3)
+        results = retriever.search(query, top_k=3)
 
         print("\nResults:")
-        for i, (_, chunk) in enumerate(results, 1):
+        for i, res in enumerate(results, 1):
             print(
-                f"{i}. {chunk.metadata['document_id']} / page {chunk.metadata['page']}"
+                f"{i}. {res['metadata']['document_id']} / page {res['metadata']['page']}"
             )
             # Show a snippet of the text
-            print(f"   {chunk.text[:150].replace(chr(10), ' ')}...")
+            print(f"   {res['text'][:150].replace(chr(10), ' ')}...")
 
 
 if __name__ == "__main__":

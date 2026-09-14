@@ -5,6 +5,7 @@ Retrieval logic for finding relevant chunks in a vector store.
 import numpy as np
 
 # pylint: disable=import-error
+from embeddings import generate_embedding
 from vector_store import VectorStore
 
 
@@ -29,14 +30,31 @@ class Retriever:
     def __init__(self, vector_store: VectorStore):
         self.vector_store = vector_store
 
-    def search(self, query_embedding: list[float], top_k: int = 3):
-        """Perform a similarity search against the vector store."""
+    def search(self, query: str, top_k: int = 5, metadata_filter: dict | None = None):
+        """Perform a similarity search against the vector store with optional filtering."""
+        query_embedding = generate_embedding(query)
         chunks = self.vector_store.get_all_chunks()
-        scored_chunks = []
+
+        scored_results = []
         for chunk in chunks:
+            # Apply metadata filtering
+            if metadata_filter:
+                match = all(
+                    chunk.metadata.get(k) == v for k, v in metadata_filter.items()
+                )
+                if not match:
+                    continue
+
             score = cosine_similarity(query_embedding, chunk.embedding)
-            scored_chunks.append((score, chunk))
+            scored_results.append(
+                {
+                    "id": chunk.id,
+                    "text": chunk.text,
+                    "score": float(score),
+                    "metadata": chunk.metadata,
+                }
+            )
 
         # Sort by score descending
-        scored_chunks.sort(key=lambda x: x[0], reverse=True)
-        return scored_chunks[:top_k]
+        scored_results.sort(key=lambda x: x["score"], reverse=True)
+        return scored_results[:top_k]
